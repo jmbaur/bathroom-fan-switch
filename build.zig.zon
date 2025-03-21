@@ -1,0 +1,17 @@
+.{
+    .name = .bathroom_fan_switch,
+    .fingerprint = 0xc9daeb56bb7c6828,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.14.0",
+    .dependencies = .{
+        .microzig = .{
+            .url = "https://github.com/ZigEmbeddedGroup/microzig/archive/cdc15df90035c2b8cc5b60bb8e67ce1a3371de16.tar.gz",
+            .hash = "122075d69dd6feac7076369f3f4cb6fd9dd352b3386400a010df0d2e199772317327",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
