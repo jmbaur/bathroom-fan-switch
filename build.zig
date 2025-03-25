@@ -18,4 +18,12 @@ pub fn build(b: *std.Build) void {
 
     mb.install_firmware(firmware, .{});
     mb.install_firmware(firmware, .{ .format = .elf });
+
+    const unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/main.zig"),
+        .optimize = optimize,
+    });
+
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&b.addRunArtifact(unit_tests).step);
 }

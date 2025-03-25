@@ -30,12 +30,12 @@ const i2c_addr: i2c.Address = @enumFromInt(0x44);
 
 i2c_instance: i2c.I2C,
 
-pub fn reset(self: *SHT3x) void {
-    self.write_command(SHT3x.Command.SoftReset);
+pub fn reset(self: *SHT3x) !void {
+    try self.write_command(SHT3x.Command.SoftReset);
     time.sleep_ms(10);
 }
 
-fn write_command(self: *SHT3x, command: Command) void {
+fn write_command(self: *SHT3x, command: Command) !void {
     const data: [2]u8 = switch (command) {
         .MeasureHighrepStretch => .{ 0x2c, 0x06 },
         .MeasureMedrepStretch => .{ 0x2c, 0x0d },
@@ -50,13 +50,11 @@ fn write_command(self: *SHT3x, command: Command) void {
         .HeaterDisable => .{ 0x30, 0x66 },
     };
 
-    self.i2c_instance.write_blocking(
+    try self.i2c_instance.write_blocking(
         i2c_addr,
         &data,
         Duration.from_ms(100),
-    ) catch |err| {
-        std.log.err("failed to write command {}: {}", .{ command, err });
-    };
+    );
 }
 
 pub fn sample(self: *SHT3x) !Sample {
@@ -65,7 +63,7 @@ pub fn sample(self: *SHT3x) !Sample {
         .humidity = 0,
     };
 
-    self.write_command(SHT3x.Command.MeasureHighrep);
+    try self.write_command(SHT3x.Command.MeasureHighrep);
     time.sleep_ms(500);
 
     var rx_data: [6]u8 = undefined;

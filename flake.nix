@@ -5,10 +5,21 @@
     devShells = inputs.nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (
       system:
       let
-        inherit (import inputs.nixpkgs { inherit system; }) zig_0_14 mkShell;
+        inherit (import inputs.nixpkgs { inherit system; })
+          gdb
+          mkShell
+          openocd-rp2040
+          zig_0_14
+          ;
       in
       {
-        default = mkShell { packages = [ zig_0_14 ]; };
+        default = mkShell {
+          packages = [
+            gdb
+            openocd-rp2040
+            zig_0_14
+          ];
+        };
       }
     );
   };
