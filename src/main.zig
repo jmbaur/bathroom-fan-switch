@@ -23,23 +23,35 @@ const i2c0 = i2c.instance.I2C0;
 const relay = gpio.num(16);
 
 fn RollingAverage(T: type, max_values: usize) type {
-    const val_is_float = switch (T) {
+    const data_is_float = switch (T) {
         f64, f32, f16 => true,
         else => false,
     };
 
     return struct {
-        num_values: usize = 0,
-        current_average: f64 = 0,
+        index: usize = 0,
+        data: [max_values]T = [_]T{0} ** max_values,
 
-        fn store(self: *@This(), value: T) void {
-            if (self.num_values >= max_values) {
-                self.num_values = 0;
-                self.current_average = 0;
+        fn average(self: *@This()) f64 {
+            var total: f64 = 0;
+
+            for (self.data) |data| {
+                total += @as(f64, if (data_is_float) data else @floatFromInt(data));
             }
 
-            self.num_values += 1;
-            self.current_average = self.current_average + (@as(f64, if (val_is_float) value else @floatFromInt(value)) - self.current_average) / @as(f64, @floatFromInt(self.num_values));
+            return total / max_values;
+        }
+
+        fn store(self: *@This(), value: T) void {
+            std.debug.assert(0 <= self.index and self.index < self.data.len);
+
+            self.data[self.index] = value;
+
+            if (self.index + 1 >= self.data.len) {
+                self.index = 0;
+            } else {
+                self.index += 1;
+            }
         }
     };
 }
@@ -50,10 +62,10 @@ test {
     for (0..100) |value| {
         avg.store(value);
     }
-    try std.testing.expectEqual(49.5, avg.current_average);
+    try std.testing.expectEqual(49.5, avg.average());
 
-    avg.store(101);
-    try std.testing.expectEqual(101, avg.current_average);
+    avg.store(100);
+    try std.testing.expectEqual(50.5, avg.average());
 }
 
 const spike_diff = 7.5;
@@ -110,11 +122,19 @@ pub fn main() !void {
         std.log.info("temperature: {d}°C", .{std.math.round(sample.temperature)});
         std.log.info("relative humidity: {d}%", .{std.math.round(sample.humidity)});
 
-        if (fan_on and avg.current_average + dip_diff >= sample.humidity) {
+        const average = avg.average();
+
+        if (fan_on and sample.humidity < average + dip_diff) {
+            // We have come back down to an acceptable humidity where we can
+            // turn the fan off.
             fan_on = false;
-        } else if (sample.humidity > avg.current_average + spike_diff) {
+        } else if (!fan_on and sample.humidity > average + spike_diff) {
+            // We have exceeded the acceptable humidity, so we turn the fan on.
             fan_on = true;
         } else if (!fan_on) {
+            // Only store samples if we don't have the fan on so that the high
+            // humidity doesn't affect our average humidity taken in normal
+            // circumstances.
             avg.store(sample.humidity);
         }
 
