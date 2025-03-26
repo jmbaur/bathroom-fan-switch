@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const std = @import("std");
 const microzig = @import("microzig");
 
@@ -9,7 +10,7 @@ const i2c = rp2xxx.i2c;
 const gpio = rp2xxx.gpio;
 
 pub const microzig_options = microzig.Options{
-    .log_level = .info,
+    .log_level = if (builtin.mode == .Debug) .debug else .info,
     .logFn = rp2xxx.uart.logFn,
 };
 
@@ -135,7 +136,7 @@ pub fn main() !void {
             continue;
         };
 
-        std.log.info("current humidity: {d:.1}%", .{sample.humidity});
+        std.log.debug("current humidity: {d:.1}%", .{sample.humidity});
 
         // Do not store sampled data if the fan is on. Presumably the fan is on
         // for a reason, so the humidity might be higher than normal.
@@ -159,7 +160,7 @@ pub fn main() !void {
             continue;
         };
 
-        std.log.info("average relative humidity: {d:.1}%", .{average});
+        std.log.debug("average relative humidity: {d:.1}%", .{average});
 
         switch (relay_status) {
             .force_closed => {},
