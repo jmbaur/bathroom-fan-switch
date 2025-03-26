@@ -26,29 +26,35 @@ const relay = gpio.num(13);
 const button = gpio.num(7);
 
 fn RollingAverage(T: type, max_values: usize) type {
+    // TODO(jared): Is it safe to convert f128 or f80 to f64? Probably not!
     const data_is_float = switch (T) {
-        f64, f32, f16 => true,
+        f128, f80, f64, f32, f16 => true,
         else => false,
     };
 
     return struct {
-        have_enough_data: bool = false,
+        /// The position in the array where the next stored sample will go.
         index: usize = 0,
-        data: [max_values]T = [_]T{0} ** max_values,
 
-        /// Returns null if we do not yet have enough data to give an average.
-        fn average(self: *@This()) ?f64 {
-            if (!self.have_enough_data) {
-                return null;
-            }
+        /// The data itself.
+        data: [max_values]?T = [_]?T{null} ** max_values,
 
+        fn reset(self: *@This()) void {
+            self.data = [_]?T{null} ** max_values;
+        }
+
+        fn average(self: *@This()) f64 {
             var total: f64 = 0;
+            var count: f64 = 0;
 
             for (self.data) |data| {
-                total += @as(f64, if (data_is_float) data else @floatFromInt(data));
+                if (data) |d| {
+                    total += @as(f64, if (data_is_float) d else @floatFromInt(d));
+                    count += 1;
+                }
             }
 
-            return total / max_values;
+            return total / count;
         }
 
         fn store(self: *@This(), value: T) void {
@@ -58,7 +64,6 @@ fn RollingAverage(T: type, max_values: usize) type {
 
             if (self.index + 1 >= self.data.len) {
                 self.index = 0;
-                self.have_enough_data = true;
             } else {
                 self.index += 1;
             }
@@ -68,6 +73,11 @@ fn RollingAverage(T: type, max_values: usize) type {
 
 test {
     var avg = RollingAverage(usize, 100){};
+
+    avg.store(1);
+    try std.testing.expectEqual(1, avg.average());
+
+    avg.reset();
 
     for (0..100) |value| {
         avg.store(value);
@@ -148,44 +158,40 @@ pub fn main() !void {
         // turn on the fan if they are pooping and don't want others to hear.
         if (button.read() == 1) {
             relay_status = .force_closed;
-            continue;
-        } else if (relay_status == .force_closed) {
-            // Only open the relay if the button is not pressed and was
-            // previously force closed (via button press).
-            relay_status = .open;
-        }
-
-        const average = avg.average() orelse {
-            std.log.debug("calculating average...", .{});
-            continue;
-        };
-
-        std.log.debug("average relative humidity: {d:.1}%", .{average});
-
-        switch (relay_status) {
-            .force_closed => {},
-            .closed => {
-                if (sample.humidity < average + dip_diff) {
-                    // We have come back down to an acceptable humidity where
-                    // we can open the relay.
-                    std.log.info(
-                        "relative humidity below {d:.1}% + {d:.1}%, turning off fan",
-                        .{ average, dip_diff },
-                    );
+        } else {
+            switch (relay_status) {
+                .force_closed => {
+                    // Only open the relay if the button is not pressed and was
+                    // previously force closed (via button press).
                     relay_status = .open;
-                }
-            },
-            .open => {
-                if (sample.humidity > average + spike_diff) {
-                    // We have exceeded the acceptable humidity, so we can
-                    // close the relay.
-                    std.log.info(
-                        "relative humidity above {d:.1}% + {d:.1}%, turning on fan",
-                        .{ average, spike_diff },
-                    );
-                    relay_status = .closed;
-                }
-            },
+                },
+                .closed => {
+                    const average = avg.average();
+
+                    if (sample.humidity < average + dip_diff) {
+                        // We have come back down to an acceptable humidity
+                        // where we can open the relay.
+                        std.log.info(
+                            "relative humidity below {d:.1}% + {d:.1}%, turning off fan",
+                            .{ average, dip_diff },
+                        );
+                        relay_status = .open;
+                    }
+                },
+                .open => {
+                    const average = avg.average();
+
+                    if (sample.humidity > average + spike_diff) {
+                        // We have exceeded the acceptable humidity, so we can
+                        // close the relay.
+                        std.log.info(
+                            "relative humidity above {d:.1}% + {d:.1}%, turning on fan",
+                            .{ average, spike_diff },
+                        );
+                        relay_status = .closed;
+                    }
+                },
+            }
         }
     }
 }
