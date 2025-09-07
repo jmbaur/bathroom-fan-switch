@@ -2,11 +2,11 @@
     .name = .bathroom_fan_switch,
     .fingerprint = 0xc9daeb56bb7c6828,
     .version = "0.1.0",
-    .minimum_zig_version = "0.14.0",
+    .minimum_zig_version = "0.15.1",
     .dependencies = .{
         .microzig = .{
-            .url = "https://github.com/ZigEmbeddedGroup/microzig/archive/de9c1665c10fdbae0ad5cba8b0e8411aeac690d4.tar.gz",
-            .hash = "12202e7e65772106fb0aab3d018813f7ff071a0e185a5c4a514b187de18783d1e099",
+            .url = "https://github.com/ZigEmbeddedGroup/microzig/archive/039d2da63bf507c42a669e2233c52afa89ab1dcb.tar.gz",
+            .hash = "microzig-0.15.0-D20YSTa72gCHaTig_dfQszKY6IPg4nctMYwlvqUwd8-m",
         },
     },
     .paths = .{

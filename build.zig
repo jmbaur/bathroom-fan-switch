@@ -20,8 +20,11 @@ pub fn build(b: *std.Build) void {
     mb.install_firmware(firmware, .{ .format = .elf });
 
     const unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/main.zig"),
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = b.graph.host,
+            .optimize = .Debug,
+        }),
     });
 
     const test_step = b.step("test", "Run unit tests");

@@ -11,7 +11,7 @@ const gpio = rp2xxx.gpio;
 
 pub const microzig_options = microzig.Options{
     .log_level = if (builtin.mode == .Debug) .debug else .info,
-    .logFn = rp2xxx.uart.logFn,
+    .logFn = rp2xxx.uart.log,
 };
 
 const uart = rp2xxx.uart.instance.UART0;
@@ -105,11 +105,11 @@ pub fn main() !void {
 
     inline for (i2c_pins) |pin| {
         pin.set_slew_rate(.slow);
-        pin.set_schmitt_trigger(.enabled);
+        pin.set_schmitt_trigger_enabled(true);
         pin.set_function(.i2c);
     }
 
-    try i2c1.apply(.{ .clock_config = rp2xxx.clock_config });
+    i2c1.apply(.{ .clock_config = rp2xxx.clock_config });
 
     relay.set_direction(.out);
     relay.set_function(.sio);
